@@ -53,6 +53,10 @@ def extract_ps_from_text(text):
     p_values = map(lambda x: (x[0],float(x[2]),x[1]),matches) #TODO: handle x*10^y notation
     return p_values
 
+## TEST
+#text = convert_pdf_to_txt('max+weisbuch/Weisbuch2009.pdf')
+#print(extract_ps_from_text(text))
+
 def extract_ps_from_pdf(url,file_dir):
     """Extracts p values from a pdf by following the link, returns list of p-values""" 
     try:
