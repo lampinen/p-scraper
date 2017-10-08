@@ -55,6 +55,7 @@ def extract_ps_from_text(text):
     \u2b0d: <
     """
     #test_string = 'Hi my name is p < 0.05, my P=0.042, so not p < 1.3e-10 or p < 1.4*10^-5' #Debugging regex string
+    #matches = re.findall(u'([^\n].*([pP]s?[ \t]*([<>=\u2b0d])[ \t]*([\d][ ]*(.[ ]*[\d]*)?[ ]*\*10[ ]*\^[ ]*-?[ ]*\d*|[\d][ ]*(.[ ]*[\d]*)?[ ]*e[ ]*-?[ ]*\d*|[\d]?[ ]*\.[ ]*[\d]*)).*[$\n])', text, re.UNICODE) #TODO: Gets whole line, but misses multiple p-values in a single line, fix.
     matches = re.findall(u'([pP]s?[ \t]*([<>=\u2b0d])[ \t]*([\d][ ]*(.[ ]*[\d]*)?[ ]*\*10[ ]*\^[ ]*-?[ ]*\d*|[\d][ ]*(.[ ]*[\d]*)?[ ]*e[ ]*-?[ ]*\d*|[\d]?[ ]*\.[ ]*[\d]*))', text, re.UNICODE) #TODO: Ignore  labels for tables by detecting daggers or 1-3 * before the p-value.
     print matches
     def _matches_to_values(x):
