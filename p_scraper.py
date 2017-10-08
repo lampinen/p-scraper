@@ -14,6 +14,7 @@ from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 from cStringIO import StringIO
+from bs4 import UnicodeDammit
 
 def stringify_children(node):
     """Stolen from the internet"""
@@ -45,13 +46,25 @@ def convert_pdf_to_txt(path):
     fp.close()
     device.close()
     retstr.close()
+    # handle some codec stuff
+    text = UnicodeDammit(text).unicode_markup
     return text
 
 def extract_ps_from_text(text):
-    """Extracts p-values from text, helper function for the below"""
+    """Extracts p-values from text, helper function for the below. Regex matches p less than, greater than, or equal to, and values in decimal or scientific notation, either as 1e9 or 1*10^-9. Handles some weird unicode characters that comparison operators sometimes get replaced as:
+    \u2b0d: <
+    """
     #test_string = 'Hi my name is p < 0.05, my P=0.042, so not p < 1.3e-10 or p < 1.4*10^-5' #Debugging regex string
-    matches = re.findall('([pP][ \t]*([<>=])[ \t]*([\d](.[\d]*)?\*10\^-?\d*|[\d](.[\d]*)?e-?\d*|\d\.[\d]*))',text) #Regex matches p less than, greater than, or equal to, and values in decimal or scientific notation, either as 1e9 or 1*10^-9
-    p_values = map(lambda x: (x[0],float(x[2]),x[1]),matches) #TODO: handle x*10^y notation
+    matches = re.findall(u'([pP]s?[ \t]*([<>=\u2b0d])[ \t]*([\d][ ]*(.[ ]*[\d]*)?[ ]*\*10[ ]*\^[ ]*-?[ ]*\d*|[\d][ ]*(.[ ]*[\d]*)?[ ]*e[ ]*-?[ ]*\d*|[\d]?[ ]*\.[ ]*[\d]*))', text, re.UNICODE) #TODO: Ignore  labels for tables by detecting daggers or 1-3 * before the p-value.
+    print matches
+    def _matches_to_values(x):
+	try:
+	    temp = (x[0], float(x[2].replace(' ','')), x[1])
+	except ValueError:
+	    print("error converting value to float: ", x[2])
+	    temp = (x[0], None, x[1])
+	return temp 
+    p_values = map(_matches_to_values, matches) #TODO: handle x*10^y notation
     return p_values
 
 ## TEST
