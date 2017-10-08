@@ -6,6 +6,7 @@ from lxml import html
 from lxml.etree import tostring
 from itertools import chain
 import os
+import glob
 from string import maketrans
 import requests
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
@@ -57,7 +58,7 @@ def extract_ps_from_text(text):
 #text = convert_pdf_to_txt('max+weisbuch/Weisbuch2009.pdf')
 #print(extract_ps_from_text(text))
 
-def extract_ps_from_pdf(url,file_dir):
+def extract_ps_from_pdf(url, file_dir):
     """Extracts p values from a pdf by following the link, returns list of p-values""" 
     try:
 	r = requests.get(url)
@@ -67,16 +68,17 @@ def extract_ps_from_pdf(url,file_dir):
     if r.status_code != 200:
 	print "Error fetching file: "+url
 	return []
-    path = file_dir+'temp.pdf'
+    path = file_dir + url.split('/')[-1]
     with open(path, 'wb') as f:
 	for chunk in r:
 	    f.write(chunk)
     try:
 	this_PDF_txt = convert_pdf_to_txt(path)
-	os.remove(path) #Clean up
+#	os.remove(path) #Clean up
 	return extract_ps_from_text(this_PDF_txt)
     except:
 	print "Error extracting text from pdf: "+url
+#	os.remove(path) #Clean up
 	return []
 
 def extract_ps_from_html(url):
@@ -93,7 +95,7 @@ def find_links(topic='',n=100):
     page = requests.get('http://scholar.google.com/scholar?hl=en&q='+topic)
     pdf_links = []
     html_links = []
-    while (len(pdf_links)+len(html_links) < n):
+    while (len(pdf_links) + len(html_links) < n):
 	tree = html.fromstring(page.content)
 	a_tags = tree.xpath("//a")
 	pdf_a_tags = filter(lambda x: x.text_content() and ("[PDF]" in x.text_content()),a_tags)
@@ -127,7 +129,11 @@ def main():
     n = int(sys.argv[2])
     topic = topic.translate(maketrans(' ','+')) #Translate into a search friendly format
     file_dir = './'+topic+'/'
-    if not os.path.isdir(file_dir):
+    if os.path.isdir(file_dir):
+	files = glob.glob(file_dir + '*.*') #Clean up out of date stuff
+	for f in files:
+	    os.remove(f)
+    else:
 	os.mkdir(file_dir)
     pdf_links,html_links = find_links(topic,n)
     plotting_ps = []
