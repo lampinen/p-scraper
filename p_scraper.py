@@ -54,23 +54,34 @@ def extract_ps_from_text(text):
     """Extracts p-values from text, helper function for the below. Regex matches p less than, greater than, or equal to, and values in decimal or scientific notation, either as 1e9 or 1*10^-9. Handles some weird unicode characters that comparison operators sometimes get replaced as:
     \u2b0d: <
     """
-    #test_string = 'Hi my name is p < 0.05, my P=0.042, so not p < 1.3e-10 or p < 1.4*10^-5' #Debugging regex string
-    #matches = re.findall(u'([^\n].*([pP]s?[ \t]*([<>=\u2b0d])[ \t]*([\d][ ]*(.[ ]*[\d]*)?[ ]*\*10[ ]*\^[ ]*-?[ ]*\d*|[\d][ ]*(.[ ]*[\d]*)?[ ]*e[ ]*-?[ ]*\d*|[\d]?[ ]*\.[ ]*[\d]*)).*[$\n])', text, re.UNICODE) #TODO: Gets whole line, but misses multiple p-values in a single line, fix.
-    matches = re.findall(u'([pP]s?[ \t]*([<>=\u2b0d])[ \t]*([\d][ ]*(.[ ]*[\d]*)?[ ]*\*10[ ]*\^[ ]*-?[ ]*\d*|[\d][ ]*(.[ ]*[\d]*)?[ ]*e[ ]*-?[ ]*\d*|[\d]?[ ]*\.[ ]*[\d]*))', text, re.UNICODE) #TODO: Ignore  labels for tables by detecting daggers or 1-3 * before the p-value.
-    print matches
+    p_value_regex = u'([pP]s?[ \t]*([<>=\u2b0d])[ \t]*([\d][ ]*(.[ ]*[\d]*)?[ ]*\*10[ ]*\^[ ]*-?[ ]*\d*|[\d][ ]*(.[ ]*[\d]*)?[ ]*e[ ]*-?[ ]*\d*|[\d]?[ ]*\.[ ]*[\d]*))'
+
+    def _filter_condition(line, expression):
+	#Condition(s) for filtering out non-p-value expressions that got past the regex, e.g. table keys
+	if not any(re.findall('\d', expression)): # no digits?
+	     return True
+	#TODO: Ignore  labels for tables by detecting daggers or 1-3 * before the p-value.
+	return False
+
+    matches = []
+    for line in text.split('\n'):
+	local_matches = re.findall(p_value_regex, line, re.UNICODE) 
+	matches.extend([(line,) + match for match in local_matches if not _filter_condition(line, match[0])])
     def _matches_to_values(x):
 	try:
-	    temp = (x[0], float(x[2].replace(' ','')), x[1])
+	    temp = (x[0], x[1], float(x[3].replace(' ','')), x[2])
 	except ValueError:
-	    print("error converting value to float: ", x[2])
-	    temp = (x[0], None, x[1])
+	    print("error converting value to float: ", x[3])
+	    temp = (x[0], x[1], None, x[2])
 	return temp 
+
     p_values = map(_matches_to_values, matches) #TODO: handle x*10^y notation
     return p_values
 
 ## TEST
-#text = convert_pdf_to_txt('max+weisbuch/Weisbuch2009.pdf')
+#text = convert_pdf_to_txt('test_files/Weisbuch2009.pdf')
 #print(extract_ps_from_text(text))
+#exit()
 
 def extract_ps_from_pdf(url, file_dir):
     """Extracts p values from a pdf by following the link, returns list of p-values""" 
@@ -156,13 +167,13 @@ def main():
 	for url in pdf_links:
 	    ps = extract_ps_from_pdf(url,file_dir)
 	    for p in ps:
-		results_file.write(url+','+p[0]+','+str(p[1])+','+p[2]+'\n')
-		plotting_ps.append(p[1]) #so inefficient
+		results_file.write(url + ', ' + str(p)[1:-1] + '\n')
+		plotting_ps.append(p[2]) #so inefficient
 	for url in html_links:
 	    ps = extract_ps_from_html(url)
 	    for p in ps:
-		results_file.write(url+','+p[0]+','+str(p[1])+','+p[2]+'\n')
-		plotting_ps.append(p[1]) #so inefficient
+		results_file.write(url + ', ' + str(p)[1:-1] + '\n')
+		plotting_ps.append(p[2]) #so inefficient
     plot_ps(plotting_ps)
 
 
