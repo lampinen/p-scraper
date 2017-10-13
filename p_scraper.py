@@ -9,6 +9,7 @@ import os
 import glob
 from string import maketrans
 import requests
+import urllib2 # use for FTP
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
@@ -86,18 +87,31 @@ def extract_ps_from_text(text):
 
 def extract_ps_from_pdf(url, file_dir):
     """Extracts p values from a pdf by following the link, returns list of p-values""" 
-    try:
-	r = requests.get(url)
-    except:
-	print "Error fetching file: "+url
-	return []
-    if r.status_code != 200:
-	print "Error fetching file: "+url
-	return []
+    if url[:4] == "http":
+	try:
+	    if url[:4] == "http":
+		s = requests.Session()
+		s.headers.update({'referer': 'https://scholar.google.com'}) # some sites check
+		r = s.get(url)
+	except:
+	    print "Error fetching file: "+url
+	    return []
+	if r.status_code != 200:
+	    print "Error fetching file: "+url
+	    return []
+    elif url[:3] == "ftp":
+	try:
+	    r = urllib2.urlopen(url)
+	except:
+	    print "Error fetching file: "+url
+	    return []
+
     path = file_dir + url.split('/')[-1]
     with open(path, 'wb') as f:
 	for chunk in r:
 	    f.write(chunk)
+
+
     try:
 	this_PDF_txt = convert_pdf_to_txt(path)
 #	os.remove(path) #Clean up
@@ -110,7 +124,9 @@ def extract_ps_from_pdf(url, file_dir):
 def extract_ps_from_html(url):
     """Extracts p values from a pdf by following the link, returns list of p-values""" 
     try:
-	page = requests.get(url)
+	s = requests.Session()
+	s.headers.update({'referer': 'https://scholar.google.com'}) # some sites check
+	page = s.get(url)
     except:
 	print "Error fetching file: "+url
 	return []
@@ -170,13 +186,19 @@ def main():
 	for url in pdf_links:
 	    ps = extract_ps_from_pdf(url,file_dir)
 	    for p in ps:
-		results_file.write(url + ', ' + str(p)[1:-1] + '\n')
-		plotting_ps.append(p[2]) #so inefficient
+		this_p_raw = str(p)[1:-1]
+		this_p_raw = re.sub("^u'", "'", this_p_raw)
+		this_p_raw = re.sub(" u'", " '", this_p_raw) # Why can't this combine with the last line? Idk.
+		results_file.write(url + ', ' + this_p_raw + '\n')
+		plotting_ps.append(p[2])
 	for url in html_links:
 	    ps = extract_ps_from_html(url)
 	    for p in ps:
-		results_file.write(url + ', ' + str(p)[1:-1] + '\n')
-		plotting_ps.append(p[2]) #so inefficient
+		this_p_raw = str(p)[1:-1]
+		this_p_raw = re.sub("^u'", "'", this_p_raw)
+		this_p_raw = re.sub(" u'", " '", this_p_raw) # Why can't this combine with the last line? Idk.
+		results_file.write(url + ', ' + this_p_raw + '\n')
+		plotting_ps.append(p[2])
     plot_ps(plotting_ps)
 
 
