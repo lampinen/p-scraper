@@ -25,11 +25,12 @@ def stringify_children(node):
     return ''.join(filter(None, parts))
 
 def convert_pdf_to_txt(path):
-    """Stolen from the internet"""
+    """Stolen from the internet, with minor modifications"""
     rsrcmgr = PDFResourceManager()
     retstr = StringIO()
     codec = 'utf-8'
     laparams = LAParams()
+    laparams.all_texts = True
     device = TextConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
     fp = file(path, 'rb')
     interpreter = PDFPageInterpreter(rsrcmgr, device)
@@ -38,7 +39,7 @@ def convert_pdf_to_txt(path):
     caching = True
     pagenos=set()
 
-    for page in PDFPage.get_pages(fp, pagenos, maxpages=maxpages, password=password,caching=caching, check_extractable=True):
+    for page in PDFPage.get_pages(fp, pagenos, maxpages=maxpages, password=password, caching=caching, check_extractable=True):
         interpreter.process_page(page)
 
     text = retstr.getvalue()
@@ -138,7 +139,9 @@ def find_links(topic='',n=100):
 
 def plot_ps(ps):
     """Given a list of p-values, plots them on a reasonable scale"""
-    plot.hist(ps,bins=numpy.arange(0,1,0.01))
+    bins = numpy.arange(0.0001,1.02,0.01)
+    bins[0] = 0 # this plus prev. line are hacky work-around for matplotlib excluding left edge of bin 
+    plot.hist(ps,bins=bins)
     plot.xlabel('p-value')
     plot.ylabel('frequency')
     plot.axvline(0.05,color='red')
