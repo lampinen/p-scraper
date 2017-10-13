@@ -61,8 +61,9 @@ def extract_ps_from_text(text):
     def _filter_condition(line, expression):
 	#Condition(s) for filtering out non-p-value expressions that got past the regex, e.g. table keys
 	if not any(re.findall('\d', expression)): # no digits?
-	     return True
-	#TODO: Ignore  labels for tables by detecting daggers or 1-3 * before the p-value.
+	    return True
+	if any(re.findall(u'[*.\u2020]+[ \t]*' + p_value_regex, line, re.UNICODE)): # Get rid of table and figure label entries like * p < 0.05, ** p < 0.01, etc. by looking for *, . and dagger before
+	    return True
 	return False
 
     matches = []
